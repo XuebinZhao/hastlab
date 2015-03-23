@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+ <html ng-app="app">
+   <head>
+     <title><%= title %></title>
+     <link rel='stylesheet' href='/stylesheets/style.css' />
+   </head>
+   <body>
+     <h1><%= title %></h1>
+ 
+     <ng-view></ng-view>
+
+	<!-- Libraries -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-route.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular-resource.min.js"></script>
+ 
+    <!-- Template -->
+    <script type="text/ng-template" id="/hast.html">
+       Search: <input type="text" ng-model="search.firstname">
+    	<ul>
+        <li ng-repeat="hast in hast | filter: search">
+			<input type="checkbox" ng-model="hast.completed" ng-change="update($index)">
+            <a ng-show="!editing[$index]" href="#/{{hast._id}}">{{hast.firstname}}</a>
+            <button ng-show="!editing[$index]" ng-click="edit($index)">edit</button>
+            <button ng-show="!editing[$index]" ng-click="remove($index)">remove</button>
+
+            <input ng-show="editing[$index]" type="text" ng-model="hast.firstname">
+            <button ng-show="editing[$index]" ng-click="update($index)">update</button>
+            <button ng-show="editing[$index]" ng-click="cancel($index)">cancel</button>
+        </li>
+        </ul>
+        New First Name: <input type="text" ng-model="newHast"><button ng-click="save()">Create</button>
+     </script>
+
+    <script type="text/ng-template" id="/hastDetails.html">
+    	<h1>{{ hast.firstname }} {{ hast.lastname }}</h1>
+		Last Name: <input type="text"     ng-model="hast.lastname"><br>
+		Gender:    <input type="text"     ng-model="hast.gender"><br>
+		Age:       <input type="text"     ng-model="hast.age"><br>
+		Weight:    <input type="text"     ng-model="hast.weight"><br>
+        Relation:  <input type="text"     ng-model="hast.relation"><br>
+        Username:  <input type="text"     ng-model="hast.username"><br>
+        password:  <input type="text"     ng-model="hast.password"><br>
+        Update at: <input type="text"     ng-model="hast.updated_at"><br>
+        
+
+        <button ng-click="update()">update</button>
+        <button ng-click="remove()">remove</button>
+    	<a href="/">Cancel</a>
+    </script>
+ 
+    <script>
+    angular.module('app', ['ngRoute', 'ngResource'])
+	
+	// Service
+
+    .factory('Hast', ['$resource', function($resource){
+        return $resource('/hast/:id', null, {
+        'update': { method:'PUT' }
+        });
+    }])
+
+    // Controllers
+
+    .controller('HastController', ['$scope', 'Hast', function ($scope, Hast) {
+    	$scope.editing = [];
+    	$scope.hast = Hast.query();
+
+    	$scope.save = function(){
+            if(!$scope.newHast || $scope.newHast.length < 1) return;
+            var hast = new Hast({ firstname: $scope.newHast });
+
+            hast.$save(function(){
+            	$scope.hast.push(hast);
+            	$scope.newHast = '';
+            });
+        }
+
+        $scope.update = function(index){
+            var hast = $scope.hast[index];
+            Hast.update({id: hast._id}, hast);
+            $scope.editing[index] = false;
+        }
+
+        $scope.edit = function(index){
+            $scope.editing[index] = angular.copy($scope.hast[index]);
+        }
+
+        $scope.cancel = function(index){
+            $scope.hast[index] = angular.copy($scope.editing[index]);
+            $scope.editing[index] = false;
+        }
+
+        $scope.remove = function(index){
+            var hast = $scope.hast[index];
+            Hast.remove({id: hast._id}, function(){
+            	$scope.hast.splice(index, 1);
+            });
+        }        
+    }])
+
+    .controller('HastDetailCtrl', ['$scope', '$routeParams', 'Hast', '$location', function ($scope, $routeParams, Hast, $location) {
+        $scope.hast = Hast.get({id: $routeParams.id });
+
+        $scope.update = function(){
+            Hast.update({id: $scope.hast._id}, $scope.hast, function(){
+            	$location.url('/');
+            });
+        }
+
+        $scope.remove = function(){
+            Hast.remove({id: $scope.hast._id}, function(){
+            	$location.url('/');
+            });
+        }
+    }])
+
+	// Routes
+ 
+    .config(['$routeProvider', function ($routeProvider) {
+        $routeProvider
+        .when('/', {
+        	templateUrl: '/hast.html',
+            controller: 'HastController'
+        })
+ 
+        .when('/:id', {
+            templateUrl: '/hastDetails.html',
+            controller: 'HastDetailCtrl'
+        });
+    }]);
+    </script>
+  </body>
+</html>
